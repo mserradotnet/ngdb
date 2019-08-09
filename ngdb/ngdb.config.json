@@ -1,0 +1,6 @@
+{
+  "inMemoryOnly": true,
+  "maxParallelism": 4,
+  "persistenceFolder": "C:\\ngdb_data",
+  "synchronousPersistence": false
+}
