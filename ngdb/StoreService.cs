@@ -1,4 +1,5 @@
-﻿using ngdb.Models;
+﻿using Microsoft.Extensions.Options;
+using ngdb.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -12,13 +13,12 @@ namespace ngdb
     public class StoreService
     {
         private Mutex collectionAddMutex;
+        private NgDbConfig ngDbConfig;
         private readonly Dictionary<string, (Collection Collection, Dictionary<string, (long Cas, Mutex Mutex, object Value)> Items)> collections;
 
-        private int setTimeoutInMilliseconds;
-
-        public StoreService()
+        public StoreService(IOptionsMonitor<NgDbConfig> options)
         {
-            this.setTimeoutInMilliseconds = 50;
+            ngDbConfig = options.CurrentValue;
             this.collectionAddMutex = new Mutex();
             this.collections = new Dictionary<string, (Collection Collection, Dictionary<string, (long Cas, Mutex Mutex, object Value)> Items)>();
         }
@@ -50,6 +50,13 @@ namespace ngdb
         /// </summary>
         /// <returns></returns>
         public IEnumerable<Collection> GetCollections() => collections.Values.Select(c => c.Collection);
+
+        /// <summary>
+        /// Returns the <see cref="Collection"/> for the given <paramref name="collectionName"/>.
+        /// </summary>
+        /// <param name="collectionName"></param>
+        /// <returns></returns>
+        public Collection GetCollection(string collectionName) => collections.GetValueOrDefault(collectionName).Collection;
 
         public OperationResult<T> Get<T>(string collectionName, string key)
         {
@@ -104,7 +111,7 @@ namespace ngdb
                 {
                     if (db.Items.TryGetValue(key, out var meta))
                     {
-                        if (meta.Mutex.WaitOne(millisecondsTimeout: setTimeoutInMilliseconds))
+                        if (meta.Mutex.WaitOne(millisecondsTimeout: ngDbConfig.SetTimeoutInMilliseconds))
                         {
                             if (cas == meta.Cas)
                             {
@@ -118,14 +125,14 @@ namespace ngdb
                             else
                             {
                                 result.Status = NgDbStoreStatus.CasMismatch;
-                                result.Message = $"Updating the item with key '{key}' into collection '{collectionName}' failed because the lock could not be acquired within the defined timeout ({setTimeoutInMilliseconds}ms)";
+                                result.Message = $"Updating the item with key '{key}' into collection '{collectionName}' failed because the lock could not be acquired within the defined timeout ({ngDbConfig.SetTimeoutInMilliseconds}ms)";
                             }
                             meta.Mutex.ReleaseMutex();
                         }
                         else
                         {
                             result.Status = NgDbStoreStatus.SetTimeout;
-                            result.Message = $"Updating the item with key '{key}' into collection '{collectionName}' failed because the lock could not be acquired within the defined timeout ({setTimeoutInMilliseconds}ms)";
+                            result.Message = $"Updating the item with key '{key}' into collection '{collectionName}' failed because the lock could not be acquired within the defined timeout ({ngDbConfig.SetTimeoutInMilliseconds}ms)";
                         }
                     }
                     else

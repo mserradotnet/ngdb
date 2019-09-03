@@ -8,6 +8,9 @@ using System.Threading.Tasks;
 
 namespace ngdb
 {
+    /// <summary>
+    /// The NgDb background service listening for incoming socket requests from outside services
+    /// </summary>
     public class NgDbServer : BackgroundService
     {
         private readonly IConnectionListenerFactory factory;

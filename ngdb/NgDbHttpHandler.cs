@@ -62,7 +62,7 @@ namespace ngdb
                         }
                         else
                         {
-                            result = store.Get(collection, key);
+                            result = store.Get<object>(collection, key);
                             response.StatusCode = StatusCodes.Status200OK;
                         }
                     }
